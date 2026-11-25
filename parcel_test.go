@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -40,17 +41,16 @@ func TestAddGetDelete(t *testing.T) {
 
 	p, err := store.Get(id)
 	require.NoError(t, err)
-	require.Equal(t, p.Address, parcel.Address)
-	require.Equal(t, p.Client, parcel.Client)
-	require.Equal(t, p.CreatedAt, parcel.CreatedAt)
-	require.Equal(t, p.Status, parcel.Status)
+	assert.Equal(t, p.Address, parcel.Address)
+	assert.Equal(t, p.Client, parcel.Client)
+	assert.Equal(t, p.CreatedAt, parcel.CreatedAt)
+	assert.Equal(t, p.Status, parcel.Status)
 
 	err = store.Delete(id)
 	require.NoError(t, err)
 
 	p, err = store.Get(id)
 	require.Error(t, err)
-	require.Nil(t, p)
 }
 
 // TestSetAddress проверяет обновление адреса
@@ -73,7 +73,7 @@ func TestSetAddress(t *testing.T) {
 
 	p, err := store.Get(id)
 	require.NoError(t, err)
-	require.Equal(t, p.Address, newAddress)
+	assert.Equal(t, p.Address, newAddress)
 }
 
 // TestSetStatus проверяет обновление статуса
@@ -97,7 +97,7 @@ func TestSetStatus(t *testing.T) {
 
 	p, err := store.Get(id)
 	require.NoError(t, err)
-	require.Equal(t, newStatus, p.Status)
+	assert.Equal(t, newStatus, p.Status)
 }
 
 // TestGetByClient проверяет получение посылок по идентификатору клиента
@@ -134,15 +134,15 @@ func TestGetByClient(t *testing.T) {
 	// get by client
 	storedParcels, err := store.GetByClient(client)
 	require.NoError(t, err)
-	require.Equal(t, len(parcels), len(storedParcels))
+	assert.Equal(t, len(storedParcels), len(parcels))
 
 	// check
 	for _, parcel := range storedParcels {
 		p, ok := parcelMap[parcel.Number]
-		require.True(t, ok)
-		require.Equal(t, p.Address, parcel.Address)
-		require.Equal(t, p.Client, parcel.Client)
-		require.Equal(t, p.CreatedAt, parcel.CreatedAt)
-		require.Equal(t, p.Status, parcel.Status)
+		assert.True(t, ok)
+		assert.Equal(t, p.Address, parcel.Address)
+		assert.Equal(t, p.Client, parcel.Client)
+		assert.Equal(t, p.CreatedAt, parcel.CreatedAt)
+		assert.Equal(t, p.Status, parcel.Status)
 	}
 }

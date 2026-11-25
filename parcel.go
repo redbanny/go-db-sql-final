@@ -3,7 +3,6 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"log"
 )
 
 type ParcelStore struct {
@@ -20,12 +19,12 @@ func (s ParcelStore) Add(p Parcel) (int, error) {
 		sql.Named("client", p.Client), sql.Named("status", p.Status),
 		sql.Named("address", p.Address), sql.Named("created_at", p.CreatedAt))
 	if err != nil {
-		return 0, fmt.Errorf("Не удалось добавить посылку. %w", err)
+		return 0, fmt.Errorf("failed to add parcel: %w", err)
 	}
 
 	id, err := res.LastInsertId()
 	if err != nil {
-		return 0, fmt.Errorf("Не удалось добавить посылку. %w", err)
+		return 0, fmt.Errorf("failed to add parcel: %w", err)
 	}
 
 	return int(id), nil
@@ -39,11 +38,7 @@ func (s ParcelStore) Get(number int) (*Parcel, error) {
 
 	err := row.Scan(&p.Number, &p.Client, &p.Status, &p.Address, &p.CreatedAt)
 	if err != nil {
-		return nil, fmt.Errorf("Не удалось найти посылку №%d : %w", number, err)
-	}
-
-	if p.Number == 0 {
-		return nil, nil
+		return nil, fmt.Errorf("failed to find parcel #%d: %w", number, err)
 	}
 
 	return p, nil
@@ -56,22 +51,23 @@ func (s ParcelStore) GetByClient(client int) ([]Parcel, error) {
 		sql.Named("client", client))
 
 	if err != nil {
-		return res, fmt.Errorf("Не удалось получить посылки клиента %d : %w", client, err)
+		return nil, fmt.Errorf("failed to get parcels for client %d: %w", client, err)
 	}
 	defer rows.Close()
 
 	for rows.Next() {
 		p := Parcel{}
+
 		err = rows.Scan(&p.Number, &p.Client, &p.Status, &p.Address, &p.CreatedAt)
 		if err != nil {
-			log.Println(err)
-			continue
+			return nil, err
 		}
+
 		res = append(res, p)
 	}
 
 	if err := rows.Err(); err != nil {
-		return res, fmt.Errorf("Не удалось получить посылки клиента %d : %w", client, err)
+		return nil, fmt.Errorf("failed to get parcels for client %d: %w", client, err)
 	}
 
 	return res, nil
@@ -83,7 +79,7 @@ func (s ParcelStore) SetStatus(number int, status string) error {
 	WHERE number = :number;`,
 		sql.Named("status", status), sql.Named("number", number))
 	if err != nil {
-		return fmt.Errorf("Не удалось обновить статус посылки №%d : %w", number, err)
+		return fmt.Errorf("failed to update status of parcel #%d: %w", number, err)
 	}
 
 	return nil
@@ -92,10 +88,12 @@ func (s ParcelStore) SetStatus(number int, status string) error {
 func (s ParcelStore) SetAddress(number int, address string) error {
 	_, err := s.db.Exec(`UPDATE parcel
 	SET address = :address
-	WHERE number = :number;`,
-		sql.Named("address", address), sql.Named("number", number))
+	WHERE number = :number
+	AND status = :status;`,
+		sql.Named("address", address), sql.Named("number", number),
+		sql.Named("status", ParcelStatusRegistered))
 	if err != nil {
-		return fmt.Errorf("Не удалось обновить адрес посылки №%d : %w", number, err)
+		return fmt.Errorf("failed to update address of parcel #%d: %w", number, err)
 	}
 
 	return nil
@@ -104,8 +102,8 @@ func (s ParcelStore) SetAddress(number int, address string) error {
 func (s ParcelStore) Delete(number int) error {
 	res, err := s.db.Exec(`DELETE FROM parcel 
 		WHERE number = :number
-		AND status = 'registered';`,
-		sql.Named("number", number))
+		AND status = :status;`,
+		sql.Named("number", number), sql.Named("status", ParcelStatusRegistered))
 	if err != nil {
 		return err
 	}
@@ -116,7 +114,7 @@ func (s ParcelStore) Delete(number int) error {
 	}
 
 	if affected == 0 {
-		return fmt.Errorf("Посылка %d не найдена или ее статус не registered", number)
+		return fmt.Errorf("parcel %d not found or its status is not registered", number)
 	}
 
 	return nil
